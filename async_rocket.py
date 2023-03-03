@@ -3,6 +3,7 @@ import curses
 from itertools import cycle
 import random
 import time
+import os
 
 
 SPACE_KEY_CODE = 32
@@ -18,8 +19,21 @@ STARS_SYMBOLS = '+*.:'
 BORDER_SIZE = 1
 
 
-FRAME_1 = 'frames/rocket_frame_1.txt'
-FRAME_2 = 'frames/rocket_frame_2.txt'
+FRAMES_PATH = 'frames/'
+ROCKET_FRAME_1 = os.path.join(FRAMES_PATH, 'rocket_frame_1.txt')
+ROCKET_FRAME_2 = os.path.join(FRAMES_PATH, 'rocket_frame_2.txt')
+
+DUCK_FRAME = os.path.join(FRAMES_PATH, 'duck.txt')
+HUBBLE_FRAME = os.path.join(FRAMES_PATH, 'hubble.txt')
+LAMP_FRAME = os.path.join(FRAMES_PATH, 'lamp.txt')
+TRASH_LARGE_FRAME = os.path.join(FRAMES_PATH, 'trash_large.txt')
+TRASH_SMALL_FRAME = os.path.join(FRAMES_PATH, 'trash_small.txt')
+TRASH_XL_FRAME = os.path.join(FRAMES_PATH, 'trash_xl.txt')
+
+TRASH_FRAMES_PATHS = [
+    DUCK_FRAME, HUBBLE_FRAME, LAMP_FRAME,
+    TRASH_LARGE_FRAME, TRASH_SMALL_FRAME, TRASH_XL_FRAME
+]
 
 
 def read_controls(canvas):
@@ -93,6 +107,23 @@ def get_frame_size(text):
     rows = len(lines)
     columns = max([len(line) for line in lines])
     return rows, columns
+
+
+async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
+    """Animate garbage, flying from top to bottom.
+    Сolumn position will stay same, as specified on start."""
+    rows_number, columns_number = canvas.getmaxyx()
+
+    column = max(column, 0)
+    column = min(column, columns_number - 1)
+
+    row = 0
+
+    while row < rows_number:
+        draw_frame(canvas, row, column, garbage_frame)
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, garbage_frame, negative=True)
+        row += speed
 
 
 async def fire(
@@ -173,7 +204,7 @@ def get_pos(max_size, current_pos, delta):
 
 
 async def animate_spaceship(canvas, rows_size, cols_size):
-    frame_1, frame_2 = get_frames(FRAME_1, FRAME_2)
+    frame_1, frame_2 = get_frames(ROCKET_FRAME_1, ROCKET_FRAME_2)
     frames_iterator = cycle((frame_1, frame_1, frame_2, frame_2))
     x_pos = 0
     y_pos = 0
@@ -200,6 +231,13 @@ def draw(canvas):
             random.randint(0, 10),
             random.choice(STARS_SYMBOLS)
         ) for _ in range(STARS_COUNT)
+    ]
+    coroutines += [
+        fly_garbage(
+            canvas,
+            get_rand_point(BORDER_SIZE, height_window - BORDER_SIZE),
+            garbage_frame
+        ) for garbage_frame in get_frames(*TRASH_FRAMES_PATHS)
     ]
     coroutines.append(fire(canvas, width_window // 2, height_window // 2))
     coroutines.append(animate_spaceship(canvas, width_window, height_window))
